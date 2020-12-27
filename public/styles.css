@@ -1,0 +1,19 @@
+/** @format */
+
+.playerDisplay {
+  height: 50px;
+  width: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: lightblue;
+}
+
+.playerDisplayContainer {
+  display: none;
+}
+
+#player1Win,
+#player2Win {
+  width: 50px;
+}

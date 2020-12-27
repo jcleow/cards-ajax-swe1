@@ -11,54 +11,53 @@
  * ========================================================
  */
 
-
 // get a random index from an array given it's size
-var getRandomIndex = function (size) {
+const getRandomIndex = function (size) {
   return Math.floor(Math.random() * size);
 };
 
 // cards is an array of card objects
-var shuffleCards = function (cards) {
-  var currentIndex = 0;
+const shuffleCards = function (cards) {
+  let currentIndex = 0;
 
   // loop over the entire cards array
   while (currentIndex < cards.length) {
     // select a random position from the deck
-    var randomIndex = getRandomIndex(cards.length);
+    const randomIndex = getRandomIndex(cards.length);
 
     // get the current card in the loop
-    var currentItem = cards[currentIndex];
+    const currentItem = cards[currentIndex];
 
     // get the random card
-    var randomItem = cards[randomIndex];
+    const randomItem = cards[randomIndex];
 
     // swap the current card and the random card
     cards[currentIndex] = randomItem;
     cards[randomIndex] = currentItem;
 
-    currentIndex = currentIndex + 1;
+    currentIndex += 1;
   }
 
   // give back the shuffled deck
   return cards;
 };
 
-var makeDeck = function () {
+const makeDeck = function () {
   // create the empty deck at the beginning
-  var deck = [];
+  const deck = [];
 
-  var suits = ['hearts', 'diamonds', 'clubs', 'spades'];
+  const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
 
-  var suitIndex = 0;
+  let suitIndex = 0;
   while (suitIndex < suits.length) {
     // make a variable of the current suit
-    var currentSuit = suits[suitIndex];
+    const currentSuit = suits[suitIndex];
 
     // loop to create all cards in this suit
     // rank 1-13
-    var rankCounter = 1;
+    let rankCounter = 1;
     while (rankCounter <= 13) {
-      var cardName = rankCounter;
+      let cardName = rankCounter;
 
       // 1, 11, 12 ,13
       if (cardName == 1) {
@@ -72,7 +71,7 @@ var makeDeck = function () {
       }
 
       // make a single card object variable
-      var card = {
+      const card = {
         name: cardName,
         suit: currentSuit,
         rank: rankCounter,
@@ -81,9 +80,9 @@ var makeDeck = function () {
       // add the card to the deck
       deck.push(card);
 
-      rankCounter = rankCounter + 1;
+      rankCounter += 1;
     }
-    suitIndex = suitIndex + 1;
+    suitIndex += 1;
   }
 
   return deck;
@@ -102,10 +101,7 @@ var makeDeck = function () {
  * ========================================================
  */
 
-
-
-export default function games(db){
-
+export default function games(db) {
   // render the main page
   const index = (request, response) => {
     response.render('games/index');
@@ -113,65 +109,124 @@ export default function games(db){
 
   // create a new game. Insert a new row in the DB.
   const create = async (request, response) => {
-
     // deal out a new shuffled deck for this game.
-    const deck = shuffleCards( makeDeck() );
+    const deck = shuffleCards(makeDeck());
 
     const newGame = {
-      cards : {
+      cards: {
         playerHand: [deck.pop(), deck.pop()],
-        deck
-      }
+        deck,
+      },
     };
-
-    try{
+    console.log(request.cookies, 'cookies');
+    console.log(request.cookies.loggedInUserId, 'cookies-1');
+    try {
       // run the DB INSERT query
       const game = await db.Game.create(newGame);
+      const newGameRound = {
+        GameId: game.id,
+        UserId: Number(request.cookies.loggedInUserId),
+      };
+      const gameRound = await db.GamesUser.create(newGameRound);
 
       // send the new game back to the user.
       // dont include the deck so the user can't cheat
       response.send({
         id: game.id,
-        cards : {
-          playerHand : game.cards.playerHand
-        }
+        cards: {
+          playerHand: game.cards.playerHand,
+        },
       });
-    }catch( error ){
-      response.status( 500 ).send(error);
+    } catch (error) {
+      response.status(500).send(error);
     }
   };
 
   // deal two new cards from the deck.
   const deal = async (request, response) => {
-
-    try{
-
+    try {
       // get the game by the ID passed in the request
       const game = await db.Game.findByPk(request.params.id);
 
+      // get the GamesUser table by the GameId passed
+      const selectedGameRoundArray = await db.GamesUser.findAll({
+        where: {
+          GameId: request.params.id,
+        },
+      });
+
       // make changes to the object
-      const playerHand = [game.cards.deck.pop(), game.cards.deck.pop()];
-      const deck = game.cards.deck;
+      const card1 = game.cards.deck.pop();
+      const card2 = game.cards.deck.pop();
+      const playerHand = [card1, card2];
+      const { deck } = game.cards;
+
+      // Track current round winner
+      let winner;
+
+      // Track game status('ongoing' or 'gameOver')
+      let gameStatus = 'ongoing';
+
+      if (card1.rank > card2.rank) {
+        winner = '1';
+        // Increment the first player's times_won by 1
+        await selectedGameRoundArray[0].update({
+          times_won: selectedGameRoundArray[0].times_won += 1,
+        });
+        // if user won 3 times, then the game ends
+        if (selectedGameRoundArray[0].times_won === 3) {
+          // Update GamesUser table that P1 is the winner and P2 is the loser
+          await selectedGameRoundArray[0].update({
+            result: 'Winner',
+          });
+          await selectedGameRoundArray[1].update({
+            result: 'Loser',
+          });
+          console.log('game over - P1 wins');
+          gameStatus = 'gameOver';
+        }
+      } else if (card1.rank < card2.rank) {
+        winner = '2';
+        // Increment the second player's times_won by 1
+        await selectedGameRoundArray[1].update({
+          times_won: selectedGameRoundArray[1].times_won += 1,
+        });
+        // if user won 3 times, then the game ends
+        if (selectedGameRoundArray[1].times_won === 3) {
+          // Update GamesUser table that P2 is the winner and P1 is the loser
+          await selectedGameRoundArray[0].update({
+            result: 'Loser',
+          });
+          await selectedGameRoundArray[1].update({
+            result: 'Winner',
+          });
+          console.log('game over - P2 wins');
+          gameStatus = 'gameOver';
+        }
+      } else {
+        winner = 'none';
+      }
 
       // update the game with the new info
       await game.update({
         cards: {
           playerHand,
-          deck
-        }
+          deck,
+        },
       });
 
       // send the updated game back to the user.
       // dont include the deck so the user can't cheat
       response.send({
         id: game.id,
-        cards : {
-          playerHand : game.cards.playerHand
-        }
+        cards: {
+          playerHand: game.cards.playerHand,
+        },
+        winner,
+        gameStatus,
       });
-
-    }catch ( error ){
-      response.status( 500 ).send(error);
+    } catch (error) {
+      response.status(500).send(error);
     }
   };
 
@@ -180,6 +235,6 @@ export default function games(db){
   return {
     deal,
     create,
-    index
+    index,
   };
 }
