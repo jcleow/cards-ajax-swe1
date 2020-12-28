@@ -1,18 +1,48 @@
 import db from './models/index.mjs';
-import users from './controllers/users.mjs';
-
+import convertUserIdToHash from './helper.mjs';
 // import your controllers here
+import users from './controllers/users.mjs';
 import games from './controllers/games.mjs';
 
 export default function routes(app) {
-  const GamesController = games(db);
+  // App wide authentication (without SALT)
+  app.use(async (req, res, next) => {
+    req.middlewareLoggedIn = false;
 
+    if (req.cookies.loggedInUserId) {
+      const hash = convertUserIdToHash(req.cookies.loggedInUserId);
+
+      if (req.cookies.loggedInHash === hash) {
+        req.middlewareLoggedIn = true;
+      }
+
+      const { loggedInUserId } = req.cookies;
+      // Find this user in the database
+      const chosenUser = await db.User.findOne({
+        where: {
+          id: loggedInUserId,
+        },
+      });
+      if (!chosenUser) {
+        res.status(503).send('sorry an error has occurred');
+      }
+      console.log(chosenUser, 'chosenUser');
+      req.middlewareLoggedIn = true;
+      next();
+      return;
+    }
+    next();
+  });
+
+  const GamesController = games(db);
   // main page
   app.get('/', GamesController.displayMainPage);
   // show if there are any existing games
   app.get('/games', GamesController.index);
   // get selected game
   app.get('/games/:id', GamesController.show);
+  // get selected game score
+  app.get('/games/:id/score', GamesController.score);
   // create a new game
   app.post('/games', GamesController.create);
   // update a game with new cards

@@ -1,3 +1,6 @@
+import sequelizePkg from 'sequelize';
+
+const { Op } = sequelizePkg;
 /*
  * ========================================================
  * ========================================================
@@ -169,12 +172,12 @@ export default function games(db) {
 
       if (card1.rank > card2.rank) {
         winner = '1';
-        // Increment the first player's times_won by 1
+        // Increment the first player's score by 1
         await selectedGameRoundArray[0].update({
-          times_won: selectedGameRoundArray[0].times_won += 1,
+          score: selectedGameRoundArray[0].score += 1,
         });
         // if user won 3 times, then the game ends
-        if (selectedGameRoundArray[0].times_won === 3) {
+        if (selectedGameRoundArray[0].score === 3) {
           // Update GamesUser table that P1 is the winner and P2 is the loser
           await selectedGameRoundArray[0].update({
             result: 'Winner',
@@ -187,12 +190,12 @@ export default function games(db) {
         }
       } else if (card1.rank < card2.rank) {
         winner = '2';
-        // Increment the second player's times_won by 1
+        // Increment the second player's score by 1
         await selectedGameRoundArray[1].update({
-          times_won: selectedGameRoundArray[1].times_won += 1,
+          score: selectedGameRoundArray[1].score += 1,
         });
         // if user won 3 times, then the game ends
-        if (selectedGameRoundArray[1].times_won === 3) {
+        if (selectedGameRoundArray[1].score === 3) {
           // Update GamesUser table that P2 is the winner and P1 is the loser
           await selectedGameRoundArray[0].update({
             result: 'Loser',
@@ -233,18 +236,30 @@ export default function games(db) {
   // For either user to refresh the game
   const refresh = async (request, response) => {
     const currentGame = await db.Game.findByPk(request.params.id);
-    response.send(currentGame);
+    const currentGameScore = await db.GamesUser.findAll({
+      where: {
+        GameId: currentGame.id,
+      },
+    });
+    console.log(currentGameScore, 'currentGameScore');
+    response.send({ currentGame, currentGameScore });
   };
 
   // Index all on-going games
   const index = async (req, res) => {
-    const allOngoingGamesArray = await db.GamesUser.findAll({
-      where: {
-        UserId: req.cookies.loggedInUserId,
-        result: null,
-      },
-    });
-    res.send(allOngoingGamesArray);
+    if (req.middlewareLoggedIn === true) {
+      const allOngoingGamesArray = await db.GamesUser.findAll({
+        where: {
+          UserId: req.cookies.loggedInUserId,
+          result: null,
+        },
+      });
+      if (allOngoingGamesArray) {
+        res.send(allOngoingGamesArray);
+        return;
+      }
+    }
+    res.send('no ongoing games/must be loggedin');
   };
 
   // Show the selected game
@@ -253,10 +268,29 @@ export default function games(db) {
       where: {
         id: req.params.id,
       },
-      // attributes:[]
     });
 
     res.send(selectedOngoingGame);
+  };
+
+  const score = async (req, res) => {
+    const player1Score = await db.GamesUser.findOne({
+      where: {
+        GameId: req.params.id,
+        UserId: req.cookies.loggedInUserId,
+      },
+    });
+
+    const player2Score = await db.GamesUser.findOne({
+      where: {
+        GameId: req.params.id,
+        [Op.not]: [
+          { UserId: req.cookies.loggedInUserId },
+        ],
+      },
+    });
+
+    res.send({ player1Score, player2Score });
   };
 
   // return all functions we define in an object
@@ -268,5 +302,6 @@ export default function games(db) {
     refresh,
     index,
     show,
+    score,
   };
 }

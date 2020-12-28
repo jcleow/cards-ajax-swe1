@@ -3,7 +3,7 @@ export default function gamesUserModel(sequelize, DataTypes) {
     result: {
       type: DataTypes.STRING,
     },
-    times_won: {
+    score: {
       type: DataTypes.INTEGER,
     },
   }, {

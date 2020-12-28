@@ -47,6 +47,8 @@ const runGame = function ({ cards, winner }) {
     player1WinDiv.innerText = 'Draw';
     player2WinDiv.innerText = 'Draw';
   }
+
+  outputCurrentGameScores(currentGame);
 };
 
 const createGame = function () {
@@ -57,11 +59,8 @@ const createGame = function () {
     .then((response) => {
       // set the global value to the new game.
       currentGame = response.data;
-
-      // display it out to the user
-      runGame(currentGame);
-
-      // display the deal & refresh buttons
+      currentGame.winner = winnerTracker(currentGame.cards.playerHand[0],
+        currentGame.cards.playerHand[1]);
 
       gameInterface.appendChild(createDealBtn());
       gameInterface.appendChild(createRefreshBtn());
@@ -70,8 +69,13 @@ const createGame = function () {
     .then((currentGame) => {
       axios.post('/user/random', currentGame)
         .then((generateRandPlayerResponse) => {
-          console.log(generateRandPlayerResponse, 'randPlayRes');
-        });
+          console.log(generateRandPlayerResponse, 'randPlayer');
+        })
+        .catch((error) => { console.log(error); });
+    })
+    .then(() => {
+      // display it out to the user
+      runGame(currentGame);
     })
     .catch((error) => {
       // handle error
@@ -79,7 +83,6 @@ const createGame = function () {
     });
 };
 
-// manipulate DOM, set up create game button
 createGameBtn.addEventListener('click', createGame);
 createGameBtn.innerText = 'Start New Game';
 gameButtonsDiv.appendChild(createGameBtn);
@@ -106,17 +109,10 @@ axios.get('/games')
               currentGame = selectedOngoingGame;
 
               // Display current round winner based on hand
-              let winner;
               const playerHandRankArray = selectedOngoingGame.cards
-                .playerHand.map((hand) => hand.rank);
+                .playerHand.map((hand) => hand);
 
-              // Logic to display who is the current round winner
-              if (playerHandRankArray[0] > playerHandRankArray[1]) {
-                winner = '1';
-              } else if (playerHandRankArray[0] < playerHandRankArray[1]) {
-                winner = '2';
-              }
-
+              const winner = winnerTracker(playerHandRankArray[0], playerHandRankArray[1]);
               selectedOngoingGame.winner = winner;
 
               // Display deal & refresh buttons
