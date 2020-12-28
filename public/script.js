@@ -4,6 +4,9 @@ let currentGame = null;
 // get the gameInterface div
 const gameInterface = document.querySelector('#game-interface');
 
+// store all games relating to game retrieval/creation
+const gameButtonsDiv = document.querySelector('.game-buttons');
+
 // create game btn
 const createGameBtn = document.createElement('button');
 
@@ -46,36 +49,9 @@ const runGame = function ({ cards, winner }) {
   }
 };
 
-// make a request to the server
-// to change the deck. set 2 new cards into the player hand.
-const dealCards = function () {
-  axios.put(`/games/${currentGame.id}/deal`)
-    .then((response) => {
-      // get the updated hand value
-      currentGame = response.data;
-      if (currentGame.gameStatus === 'gameOver') {
-        const dealBtn = document.querySelector('#dealBtn');
-        dealBtn.disabled = true;
-        const displayGameOverMsg = document.createElement('div');
-        displayGameOverMsg.innerText = `Game Over. Winner is P${currentGame.winner}`;
-        document.body.appendChild(displayGameOverMsg);
-      }
-
-      // display it to the user
-      runGame(currentGame);
-    })
-    .catch((error) => {
-      // handle error
-      console.log(error);
-    });
-};
-
-const refreshPage = function () {
-
-};
-
 const createGame = function () {
-  gameInterface.removeChild(createGameBtn);
+  gameInterface.removeChild(gameButtonsDiv);
+
   // Make a request to create a new game
   axios.post('/games')
     .then((response) => {
@@ -85,23 +61,10 @@ const createGame = function () {
       // display it out to the user
       runGame(currentGame);
 
-      // for this current game, create a button that will allow the user to
-      // manipulate the deck that is on the DB.
-      // Create a button for it.
-      const dealBtn = document.createElement('button');
-      dealBtn.setAttribute('id', 'dealBtn');
-      dealBtn.addEventListener('click', dealCards);
+      // display the deal & refresh buttons
 
-      // Create a refresh button
-      const refreshBtn = document.createElement('button');
-      refreshBtn.innerHTML = 'Refresh';
-      refreshBtn.addEventListener('click', refreshPage);
-
-      // display the button
-
-      dealBtn.innerText = 'Deal';
-      gameInterface.appendChild(dealBtn);
-      gameInterface.appendChild(refreshBtn);
+      gameInterface.appendChild(createDealBtn());
+      gameInterface.appendChild(createRefreshBtn());
       return Promise.resolve(currentGame);
     })
     .then((currentGame) => {
@@ -118,5 +81,54 @@ const createGame = function () {
 
 // manipulate DOM, set up create game button
 createGameBtn.addEventListener('click', createGame);
-createGameBtn.innerText = 'Start Game';
-gameInterface.appendChild(createGameBtn);
+createGameBtn.innerText = 'Start New Game';
+gameButtonsDiv.appendChild(createGameBtn);
+
+// First check if a game is already on-going(in case of multiplayer games)
+axios.get('/games')
+  .then((onGoingGameResponses) => {
+    // If there are more than 1 ongoing games, display these games
+    if (onGoingGameResponses.data.length > 0) {
+      onGoingGameResponses.data.forEach((ongoingGame) => {
+        // create a button that retrieves each of the ongoing games
+        const gameButton = document.createElement('button');
+        gameButton.innerText = `Game: ${ongoingGame.GameId}`;
+        gameButtonsDiv.appendChild(gameButton);
+
+        // add event listener to get that particular game
+        gameButton.addEventListener('click', () => {
+          axios.get(`/games/${ongoingGame.GameId}`)
+            .then((selectedGameResponse) => {
+              console.log(selectedGameResponse, 'selectedGameResponse');
+              // // set currentGameId to selectedGameId
+
+              const selectedOngoingGame = selectedGameResponse.data;
+              currentGame = selectedOngoingGame;
+
+              // Display current round winner based on hand
+              let winner;
+              const playerHandRankArray = selectedOngoingGame.cards
+                .playerHand.map((hand) => hand.rank);
+
+              // Logic to display who is the current round winner
+              if (playerHandRankArray[0] > playerHandRankArray[1]) {
+                winner = '1';
+              } else if (playerHandRankArray[0] < playerHandRankArray[1]) {
+                winner = '2';
+              }
+
+              selectedOngoingGame.winner = winner;
+
+              // Display deal & refresh buttons
+              gameInterface.appendChild(createDealBtn());
+              gameInterface.appendChild(createRefreshBtn());
+
+              // Execute the display of the selected ongoing game
+              runGame(selectedOngoingGame);
+            })
+            .catch((error) => { console.log(error); });
+        });
+      });
+    }
+  })
+  .catch((error) => { console.log(error); });

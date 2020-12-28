@@ -11,11 +11,13 @@ module.exports = {
       {
         email: 'user@email.com',
         password: hashedPassword,
+        sessionLoggedIn: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       }, {
         email: 'user2@email.com',
         password: hashedPassword,
+        sessionLoggedIn: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       },

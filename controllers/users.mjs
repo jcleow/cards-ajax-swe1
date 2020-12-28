@@ -2,7 +2,7 @@ import jsSHA from 'jssha';
 import sequelizePkg from 'sequelize';
 import convertUserIdToHash, { hashPassword } from '../helper.mjs';
 
-const { Sequelize, Op } = sequelizePkg;
+const { Op } = sequelizePkg;
 
 export default function users(db) {
   // To perform authentication of login when login button is pressed
@@ -22,7 +22,13 @@ export default function users(db) {
 
       // Perform check if password entered is the same as the password stored
       if (hashedPasswordSupplied === selectedUser.password) {
+        // update the user object's sessionLoggedIn to be
+        selectedUser.sessionLoggedIn = true;
+        await selectedUser.save();
+
+        // Send cookie through response
         res.cookie('loggedInUserId', selectedUser.id);
+        res.cookie('loggedInHash', convertUserIdToHash(selectedUser.id));
         res.send({ authenticated: true, loggedInUserId: selectedUser.id });
         return;
       }
@@ -86,6 +92,7 @@ export default function users(db) {
     const randomPlayer2 = await db.User.findOne({
       order: db.sequelize.random(),
       where: {
+
         [Op.not]: [
           { id: req.cookies.loggedInUserId },
         ],
@@ -100,7 +107,25 @@ export default function users(db) {
     res.send(randomPlayer2);
   };
 
+  const logout = async (req, res) => {
+    // update user instance that it is logged out
+    const currLoggedInUser = await db.User.findOne({
+      where: {
+        id: req.cookies.loggedInUserId,
+        sessionLoggedIn: true,
+      },
+    });
+
+    currLoggedInUser.sessionLoggedIn = false;
+    currLoggedInUser.save();
+
+    res.clearCookie('loggedInUserId');
+    res.clearCookie('loggedInHash');
+
+    res.send('User is logged out');
+  };
+
   return {
-    show, login, checkIfUserAuthenticated, create, random,
+    show, login, checkIfUserAuthenticated, create, random, logout,
   };
 }

@@ -17,3 +17,10 @@
 #player2Win {
   width: 50px;
 }
+
+.game-buttons {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}

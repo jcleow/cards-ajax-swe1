@@ -41,10 +41,10 @@ const createLoginForm = (loginContainer) => {
   const validateLogin = () => {
     const email = emailInput.value;
     const password = passwordInput.value;
-    console.log(email, 'email');
 
     axios.post('/user/login', { email, password })
       .then((response) => {
+        console.log(response, 'response');
         if (response.data.authenticated === true) {
           loginContainer.removeChild(loginFormDiv);
 

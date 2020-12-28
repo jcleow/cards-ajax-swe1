@@ -103,7 +103,7 @@ const makeDeck = function () {
 
 export default function games(db) {
   // render the main page
-  const index = (request, response) => {
+  const displayMainPage = (request, response) => {
     response.render('games/index');
   };
 
@@ -230,11 +230,43 @@ export default function games(db) {
     }
   };
 
+  // For either user to refresh the game
+  const refresh = async (request, response) => {
+    const currentGame = await db.Game.findByPk(request.params.id);
+    response.send(currentGame);
+  };
+
+  // Index all on-going games
+  const index = async (req, res) => {
+    const allOngoingGamesArray = await db.GamesUser.findAll({
+      where: {
+        UserId: req.cookies.loggedInUserId,
+        result: null,
+      },
+    });
+    res.send(allOngoingGamesArray);
+  };
+
+  // Show the selected game
+  const show = async (req, res) => {
+    const selectedOngoingGame = await db.Game.findOne({
+      where: {
+        id: req.params.id,
+      },
+      // attributes:[]
+    });
+
+    res.send(selectedOngoingGame);
+  };
+
   // return all functions we define in an object
   // refer to the routes file above to see this used
   return {
+    displayMainPage,
     deal,
     create,
+    refresh,
     index,
+    show,
   };
 }

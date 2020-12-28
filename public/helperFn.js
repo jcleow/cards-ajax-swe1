@@ -27,17 +27,87 @@ function outputMissingFieldsMessage(parentDiv, errorMessage) {
 }
 
 const createUserIdAndLogOutBtnDisplay = (parentNode, response) => {
-  const userIdDisplay = document.createElement('label');
-  userIdDisplay.innerHTML = `Logged On User Id is ${response.data.loggedInUserId}`;
+  // Create the userId display and logout btn
+  const userIdLabel = document.createElement('label');
+  userIdLabel.innerHTML = `Logged On User Id is ${response.data.loggedInUserId}`;
   const logoutBtn = document.createElement('button');
   logoutBtn.innerHTML = 'logout';
+
+  // If the user chooses to log out...
   logoutBtn.addEventListener('click', () => {
-    axios.get('/user/logout')
+    axios.put('/user/logout')
       .then((logoutResponse) => {
         console.log(logoutResponse);
+        // Query for the login container
+        const loginContainer = document.querySelector('#loginContainer');
+
+        // Remove userId-label and logout btn
+        loginContainer.removeChild(userIdLabel);
+        loginContainer.removeChild(logoutBtn);
+
+        // Re-create login form
+        createLoginForm(loginContainer);
       })
       .catch((error) => { console.log(error); });
   });
-  parentNode.appendChild(userIdDisplay);
+  parentNode.appendChild(userIdLabel);
   parentNode.appendChild(logoutBtn);
+};
+
+// make a request to the server
+// to change the deck. set 2 new cards into the player hand.
+const dealCards = function () {
+  axios.put(`/games/${currentGame.id}/deal`)
+    .then((response) => {
+      // get the updated hand value
+      currentGame = response.data;
+
+      // If any of the current user wins in this round by having a score of 3...
+      // then he is the winner
+      if (currentGame.gameStatus === 'gameOver') {
+        const dealBtn = document.querySelector('#dealBtn');
+        dealBtn.disabled = true;
+        const displayGameOverMsg = document.createElement('div');
+        displayGameOverMsg.innerText = `Game Over. Winner is P${currentGame.winner}`;
+        document.body.appendChild(displayGameOverMsg);
+      }
+
+      // display it to the user
+      runGame(currentGame);
+    })
+    .then(() => {
+      // Update the display of the running score for both players
+
+    })
+    .catch((error) => {
+      // handle error
+      console.log(error);
+    });
+};
+
+const refreshPage = function (gameId) {
+  axios.get(`/currentGameStatus/${currentGame.id}`)
+    .then((response) => {
+      currentGame = response.data;
+      runGame(currentGame);
+    })
+    .catch((error) => {
+      console.log(error);
+    });
+};
+
+const createDealBtn = () => {
+  const dealBtn = document.createElement('button');
+  dealBtn.innerText = 'Deal';
+  dealBtn.setAttribute('id', 'dealBtn');
+  dealBtn.addEventListener('click', dealCards);
+  return dealBtn;
+};
+
+// Create a refresh button
+const createRefreshBtn = () => {
+  const refreshBtn = document.createElement('button');
+  refreshBtn.innerHTML = 'Refresh';
+  refreshBtn.addEventListener('click', refreshPage);
+  return refreshBtn;
 };
