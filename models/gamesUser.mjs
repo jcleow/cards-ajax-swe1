@@ -6,6 +6,9 @@ export default function gamesUserModel(sequelize, DataTypes) {
     score: {
       type: DataTypes.INTEGER,
     },
+    player_num: {
+      type: DataTypes.INTEGER,
+    },
   }, {
     timestamps: false,
   });

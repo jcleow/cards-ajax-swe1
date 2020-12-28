@@ -56,6 +56,7 @@ export default function users(db) {
     res.send(req.middlewareLoggedIn);
   };
 
+  // Create/Start a new game
   const create = async (req, res) => {
     // query if the email already exists in the database
     try {
@@ -88,13 +89,16 @@ export default function users(db) {
     }
   };
 
+  // Choose a random player 2
   const random = async (req, res) => {
     const randomPlayer2 = await db.User.findOne({
       order: db.sequelize.random(),
       where: {
 
         [Op.not]: [
-          { id: req.cookies.loggedInUserId },
+          {
+            id: req.cookies.loggedInUserId,
+          },
         ],
       },
     });
@@ -103,10 +107,12 @@ export default function users(db) {
     await db.GamesUser.create({
       GameId: req.body.id,
       UserId: randomPlayer2.id,
+      player_num: 2,
     });
     res.send(randomPlayer2);
   };
 
+  // Delete cookies and log user out
   const logout = async (req, res) => {
     // update user instance that it is logged out
     const currLoggedInUser = await db.User.findOne({

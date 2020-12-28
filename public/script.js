@@ -68,14 +68,11 @@ const createGame = function () {
     })
     .then((currentGame) => {
       axios.post('/user/random', currentGame)
-        .then((generateRandPlayerResponse) => {
-          console.log(generateRandPlayerResponse, 'randPlayer');
+        .then(() => {
+          // display it out to the user
+          runGame(currentGame);
         })
         .catch((error) => { console.log(error); });
-    })
-    .then(() => {
-      // display it out to the user
-      runGame(currentGame);
     })
     .catch((error) => {
       // handle error

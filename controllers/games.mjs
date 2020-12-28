@@ -129,6 +129,7 @@ export default function games(db) {
       const newGameRound = {
         GameId: game.id,
         UserId: Number(request.cookies.loggedInUserId),
+        player_num: 1,
       };
       const gameRound = await db.GamesUser.create(newGameRound);
 
@@ -241,7 +242,6 @@ export default function games(db) {
         GameId: currentGame.id,
       },
     });
-    console.log(currentGameScore, 'currentGameScore');
     response.send({ currentGame, currentGameScore });
   };
 
@@ -278,12 +278,14 @@ export default function games(db) {
       where: {
         GameId: req.params.id,
         UserId: req.cookies.loggedInUserId,
+        player_num: 1,
       },
     });
 
     const player2Score = await db.GamesUser.findOne({
       where: {
         GameId: req.params.id,
+        player_num: 2,
         [Op.not]: [
           { UserId: req.cookies.loggedInUserId },
         ],

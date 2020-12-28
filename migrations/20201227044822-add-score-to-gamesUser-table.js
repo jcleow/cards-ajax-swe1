@@ -4,9 +4,13 @@ module.exports = {
       type: Sequelize.INTEGER,
       defaultValue: 0,
     });
+    await queryInterface.addColumn('GamesUsers', 'player_num', {
+      type: Sequelize.INTEGER,
+    });
   },
 
   down: async (queryInterface, Sequelize) => {
-    queryInterface.removeColumn('GamesUsers', 'score');
+    await queryInterface.removeColumn('GamesUsers', 'score');
+    await queryInterface.removeColumn('GamesUsers', 'player_num');
   },
 };
