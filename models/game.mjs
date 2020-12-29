@@ -9,6 +9,9 @@ export default function gameModel(sequelize, DataTypes) {
     cards: {
       type: DataTypes.JSON,
     },
+    winner: {
+      type: DataTypes.STRING,
+    },
     createdAt: {
       allowNull: false,
       type: DataTypes.DATE,

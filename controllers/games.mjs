@@ -117,12 +117,9 @@ export default function games(db) {
 
     const newGame = {
       cards: {
-        playerHand: [deck.pop(), deck.pop()],
         deck,
       },
     };
-    console.log(request.cookies, 'cookies');
-    console.log(request.cookies.loggedInUserId, 'cookies-1');
     try {
       // run the DB INSERT query
       const game = await db.Game.create(newGame);
@@ -152,72 +149,54 @@ export default function games(db) {
       // get the game by the ID passed in the request
       const game = await db.Game.findByPk(request.params.id);
 
-      // get the GamesUser table by the GameId passed
-      const selectedGameRoundArray = await db.GamesUser.findAll({
-        where: {
-          GameId: request.params.id,
-        },
-      });
-
       // make changes to the object
-      const card1 = game.cards.deck.pop();
-      const card2 = game.cards.deck.pop();
-      const playerHand = [card1, card2];
+      const P1Card = game.cards.deck.pop();
+      const P2Card = game.cards.deck.pop();
+      const playerHand = [P1Card, P2Card];
       const { deck } = game.cards;
 
       // Track current round winner
-      let winner;
+      let currRoundWinner;
 
       // Track game status('ongoing' or 'gameOver')
       let gameStatus = 'ongoing';
 
-      if (card1.rank > card2.rank) {
-        winner = '1';
-        // Increment the first player's score by 1
-        await selectedGameRoundArray[0].update({
-          score: selectedGameRoundArray[0].score += 1,
-        });
-        // if user won 3 times, then the game ends
-        if (selectedGameRoundArray[0].score === 3) {
-          // Update GamesUser table that P1 is the winner and P2 is the loser
-          await selectedGameRoundArray[0].update({
-            result: 'Winner',
-          });
-          await selectedGameRoundArray[1].update({
-            result: 'Loser',
-          });
-          console.log('game over - P1 wins');
-          gameStatus = 'gameOver';
-        }
-      } else if (card1.rank < card2.rank) {
-        winner = '2';
-        // Increment the second player's score by 1
-        await selectedGameRoundArray[1].update({
-          score: selectedGameRoundArray[1].score += 1,
-        });
-        // if user won 3 times, then the game ends
-        if (selectedGameRoundArray[1].score === 3) {
-          // Update GamesUser table that P2 is the winner and P1 is the loser
-          await selectedGameRoundArray[0].update({
-            result: 'Loser',
-          });
-          await selectedGameRoundArray[1].update({
-            result: 'Winner',
-          });
-          console.log('game over - P2 wins');
-          gameStatus = 'gameOver';
-        }
+      if (P1Card.rank > P2Card.rank) {
+        currRoundWinner = 1;
+      } else if (P2Card.rank > P1Card.rank) {
+        currRoundWinner = 2;
       } else {
-        winner = 'none';
+        currRoundWinner = 'none';
       }
+      // First find the selected GameUser Round based where player_num = currRoundWinner
+      // as long as currRoundWinner !== none
+      if (currRoundWinner !== 'none') {
+        const selectedGameUserRound = await db.GamesUser.findOne({
+          where: {
+            GameId: request.params.id,
+            player_num: currRoundWinner,
+          },
+        });
+        // Next update that round's score
+        await selectedGameUserRound.update({
+          score: selectedGameUserRound.score += 1,
+        });
+        // if user won 3 times, then the game ends
+        if (selectedGameUserRound.score === 3) {
+        // Update GamesUser table that P1 is the winner and P2 is the loser
+          const endOfGame = await db.Game.findByPk(request.params.id);
+          await endOfGame.update({ winner: selectedGameUserRound.UserId });
+          gameStatus = 'gameOver';
+        }
 
-      // update the game with the new info
-      await game.update({
-        cards: {
-          playerHand,
-          deck,
-        },
-      });
+        // update the game with the new info
+        await game.update({
+          cards: {
+            playerHand,
+            deck,
+          },
+        });
+      }
 
       // send the updated game back to the user.
       // dont include the deck so the user can't cheat
@@ -226,7 +205,7 @@ export default function games(db) {
         cards: {
           playerHand: game.cards.playerHand,
         },
-        winner,
+        currRoundWinner,
         gameStatus,
       });
     } catch (error) {
@@ -237,23 +216,37 @@ export default function games(db) {
   // For either user to refresh the game
   const refresh = async (request, response) => {
     const currentGame = await db.Game.findByPk(request.params.id);
-    const currentGameScore = await db.GamesUser.findAll({
-      where: {
-        GameId: currentGame.id,
-      },
-    });
-    response.send({ currentGame, currentGameScore });
+
+    const P1Card = currentGame.cards.playerHand[0];
+    const P2Card = currentGame.cards.playerHand[1];
+    let currRoundWinner;
+    if (P1Card.rank > P2Card.rank) {
+      currRoundWinner = 1;
+    } else if (P2Card.rank > P1Card.rank) {
+      currRoundWinner = 2;
+    } else {
+      currRoundWinner = 'none';
+    }
+    currentGame.setDataValue('currRoundWinner', currRoundWinner);
+    console.log(currentGame, 'currentGame-server');
+    response.send({ currentGame });
   };
 
   // Index all on-going games
   const index = async (req, res) => {
     if (req.middlewareLoggedIn === true) {
-      const allOngoingGamesArray = await db.GamesUser.findAll({
+      const allOngoingGamesArray = await db.Game.findAll({
         where: {
-          UserId: req.cookies.loggedInUserId,
-          result: null,
+          winner: null,
+        },
+        include: {
+          model: db.GamesUser,
+          where: {
+            UserId: req.cookies.loggedInUserId,
+          },
         },
       });
+      console.log(allOngoingGamesArray, 'allOngoingGamesArray');
       if (allOngoingGamesArray) {
         res.send(allOngoingGamesArray);
         return;
@@ -264,20 +257,16 @@ export default function games(db) {
 
   // Show the selected game
   const show = async (req, res) => {
-    const selectedOngoingGame = await db.Game.findOne({
-      where: {
-        id: req.params.id,
-      },
-    });
-
+    const selectedOngoingGame = await db.Game.findByPk(req.params.id);
+    console.log(selectedOngoingGame, 'selectedOngoingGame');
     res.send(selectedOngoingGame);
   };
 
+  // Get the existing score of P1 and P2
   const score = async (req, res) => {
     const player1Score = await db.GamesUser.findOne({
       where: {
         GameId: req.params.id,
-        UserId: req.cookies.loggedInUserId,
         player_num: 1,
       },
     });
@@ -286,9 +275,6 @@ export default function games(db) {
       where: {
         GameId: req.params.id,
         player_num: 2,
-        [Op.not]: [
-          { UserId: req.cookies.loggedInUserId },
-        ],
       },
     });
 

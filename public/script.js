@@ -11,7 +11,7 @@ const gameButtonsDiv = document.querySelector('.game-buttons');
 const createGameBtn = document.createElement('button');
 
 // DOM manipulation function that displays the player's current hand.
-const runGame = function ({ cards, winner }) {
+const runGame = function ({ cards, currRoundWinner }) {
   // manipulate DOM
   const dealList1 = document.querySelector('#deal-list-1');
   const dealList2 = document.querySelector('#deal-list-2');
@@ -37,10 +37,10 @@ const runGame = function ({ cards, winner }) {
   // Display winner using server-side logic
   const player1WinDiv = document.querySelector('#player1Win');
   const player2WinDiv = document.querySelector('#player2Win');
-  if (winner === '1') {
+  if (currRoundWinner === 1) {
     player1WinDiv.innerText = 'Winner';
     player2WinDiv.innerText = '';
-  } else if (winner === '2') {
+  } else if (currRoundWinner === 2) {
     player1WinDiv.innerText = '';
     player2WinDiv.innerText = 'Winner';
   } else {
@@ -59,8 +59,6 @@ const createGame = function () {
     .then((response) => {
       // set the global value to the new game.
       currentGame = response.data;
-      currentGame.winner = winnerTracker(currentGame.cards.playerHand[0],
-        currentGame.cards.playerHand[1]);
 
       gameInterface.appendChild(createDealBtn());
       gameInterface.appendChild(createRefreshBtn());
@@ -92,32 +90,26 @@ axios.get('/games')
       onGoingGameResponses.data.forEach((ongoingGame) => {
         // create a button that retrieves each of the ongoing games
         const gameButton = document.createElement('button');
-        gameButton.innerText = `Game: ${ongoingGame.GameId}`;
+        gameButton.innerText = `Game: ${ongoingGame.id}`;
         gameButtonsDiv.appendChild(gameButton);
 
         // add event listener to get that particular game
         gameButton.addEventListener('click', () => {
-          axios.get(`/games/${ongoingGame.GameId}`)
+          axios.get(`/games/${ongoingGame.id}`)
             .then((selectedGameResponse) => {
-              console.log(selectedGameResponse, 'selectedGameResponse');
               // // set currentGameId to selectedGameId
-
-              const selectedOngoingGame = selectedGameResponse.data;
-              currentGame = selectedOngoingGame;
+              currentGame = selectedGameResponse.data;
 
               // Display current round winner based on hand
-              const playerHandRankArray = selectedOngoingGame.cards
+              const playerHandRankArray = currentGame.cards
                 .playerHand.map((hand) => hand);
-
-              const winner = winnerTracker(playerHandRankArray[0], playerHandRankArray[1]);
-              selectedOngoingGame.winner = winner;
 
               // Display deal & refresh buttons
               gameInterface.appendChild(createDealBtn());
               gameInterface.appendChild(createRefreshBtn());
 
               // Execute the display of the selected ongoing game
-              runGame(selectedOngoingGame);
+              runGame(currentGame);
             })
             .catch((error) => { console.log(error); });
         });

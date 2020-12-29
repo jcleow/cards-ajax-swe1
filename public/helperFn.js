@@ -54,17 +54,6 @@ const createUserIdAndLogOutBtnDisplay = (parentNode, response) => {
   parentNode.appendChild(logoutBtn);
 };
 
-// Track all the existing winners
-const winnerTracker = (player1Hand, player2Hand) => {
-  let winner;
-  if (player1Hand.rank > player2Hand.rank) {
-    winner = '1';
-  } else if (player1Hand.rank < player2Hand.rank) {
-    winner = '2';
-  }
-  return winner;
-};
-
 // To output the scores
 const outputCurrentGameScores = (currentGame) => {
   const player1ScoreDiv = document.querySelector('#player1Score');
@@ -72,7 +61,6 @@ const outputCurrentGameScores = (currentGame) => {
 
   axios.get(`/games/${currentGame.id}/score`)
     .then((gameScoreResponse) => {
-      console.log(gameScoreResponse, 'gameScoreResponse');
       player1ScoreDiv.innerHTML = gameScoreResponse.data.player1Score.score;
       player2ScoreDiv.innerHTML = gameScoreResponse.data.player2Score.score;
     })
@@ -86,6 +74,7 @@ const dealCards = function () {
     .then((response) => {
       // get the updated hand value
       currentGame = response.data;
+      console.log(currentGame, 'currentGame');
 
       // If any of the current user wins in this round by having a score of 3...
       // then he is the winner
@@ -93,7 +82,7 @@ const dealCards = function () {
         const dealBtn = document.querySelector('#dealBtn');
         dealBtn.disabled = true;
         const displayGameOverMsg = document.querySelector('#game-over');
-        displayGameOverMsg.innerText = `Game Over. Winner is P${currentGame.winner}`;
+        displayGameOverMsg.innerText = `Game Over. Winner is P${currentGame.currRoundWinner}`;
       }
 
       // display it to the user
@@ -110,14 +99,11 @@ const dealCards = function () {
 };
 
 // Function that gets the existing state of the game from the table through AJAX
-const refreshPage = function () {
+const refreshGameInfo = function () {
   axios.get(`/currentGameStatus/${currentGame.id}`)
     .then((response) => {
-      const { currentGame, currentGameScore } = response.data;
-      // Display who is the current winner in the current round
-      const winner = winnerTracker(currentGame.cards.playerHand[0],
-        currentGame.cards.playerHand[1]);
-      currentGame.winner = winner;
+      const { currentGame } = response.data;
+      console.log(currentGame, 'response');
       runGame(currentGame);
     })
     .catch((error) => {
@@ -138,6 +124,6 @@ const createDealBtn = () => {
 const createRefreshBtn = () => {
   const refreshBtn = document.createElement('button');
   refreshBtn.innerHTML = 'Refresh';
-  refreshBtn.addEventListener('click', refreshPage);
+  refreshBtn.addEventListener('click', refreshGameInfo);
   return refreshBtn;
 };

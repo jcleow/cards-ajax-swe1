@@ -11,6 +11,9 @@ module.exports = {
         // allow us to keep non-relational data for the cards
         type: Sequelize.JSON,
       },
+      winner: {
+        type: Sequelize.STRING,
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
@@ -48,9 +51,6 @@ module.exports = {
         autoIncrement: true,
         primaryKey: true,
         type: Sequelize.INTEGER,
-      },
-      result: {
-        type: Sequelize.STRING,
       },
       GameId: {
         type: Sequelize.INTEGER,
