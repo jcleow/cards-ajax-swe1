@@ -148,7 +148,7 @@ export default function games(db) {
     try {
       // get the game by the ID passed in the request
       const game = await db.Game.findByPk(request.params.id);
-
+      console.log(game, 'game');
       // make changes to the object
       const P1Card = game.cards.deck.pop();
       const P2Card = game.cards.deck.pop();
@@ -214,22 +214,24 @@ export default function games(db) {
   };
 
   // For either user to refresh the game
-  const refresh = async (request, response) => {
+  const show = async (request, response) => {
     const currentGame = await db.Game.findByPk(request.params.id);
-
-    const P1Card = currentGame.cards.playerHand[0];
-    const P2Card = currentGame.cards.playerHand[1];
-    let currRoundWinner;
-    if (P1Card.rank > P2Card.rank) {
-      currRoundWinner = 1;
-    } else if (P2Card.rank > P1Card.rank) {
-      currRoundWinner = 2;
-    } else {
-      currRoundWinner = 'none';
+    console.log(currentGame, 'currentgame-server');
+    if (currentGame.cards.playerHand) {
+      const P1Card = currentGame.cards.playerHand[0];
+      const P2Card = currentGame.cards.playerHand[1];
+      let currRoundWinner;
+      if (P1Card.rank > P2Card.rank) {
+        currRoundWinner = 1;
+      } else if (P2Card.rank > P1Card.rank) {
+        currRoundWinner = 2;
+      } else {
+        currRoundWinner = 'none';
+      }
+      currentGame.setDataValue('currRoundWinner', currRoundWinner);
     }
-    currentGame.setDataValue('currRoundWinner', currRoundWinner);
-    console.log(currentGame, 'currentGame-server');
-    response.send({ currentGame });
+    console.log(currentGame, 'currentGame');
+    response.send(currentGame);
   };
 
   // Index all on-going games
@@ -253,13 +255,6 @@ export default function games(db) {
       }
     }
     res.send('no ongoing games/must be loggedin');
-  };
-
-  // Show the selected game
-  const show = async (req, res) => {
-    const selectedOngoingGame = await db.Game.findByPk(req.params.id);
-    console.log(selectedOngoingGame, 'selectedOngoingGame');
-    res.send(selectedOngoingGame);
   };
 
   // Get the existing score of P1 and P2
@@ -287,7 +282,6 @@ export default function games(db) {
     displayMainPage,
     deal,
     create,
-    refresh,
     index,
     show,
     score,

@@ -97,18 +97,25 @@ axios.get('/games')
         gameButton.addEventListener('click', () => {
           axios.get(`/games/${ongoingGame.id}`)
             .then((selectedGameResponse) => {
-              // // set currentGameId to selectedGameId
               currentGame = selectedGameResponse.data;
 
-              // Display current round winner based on hand
-              const playerHandRankArray = currentGame.cards
-                .playerHand.map((hand) => hand);
-
               // Display deal & refresh buttons
+              // Remove and reappend everytime a new game button is clicked
+              // (to prevent disabled deal button specific to a game)
+              const existingDealBtn = document.querySelector('#dealBtn');
+              const existingRefreshBtn = document.querySelector('#refreshBtn');
+
+              if (existingDealBtn) {
+                gameInterface.removeChild(existingDealBtn);
+              }
+              if (existingRefreshBtn) {
+                gameInterface.removeChild(existingRefreshBtn);
+              }
+
               gameInterface.appendChild(createDealBtn());
               gameInterface.appendChild(createRefreshBtn());
-
-              // Execute the display of the selected ongoing game
+              // Execute the display of the selected ongoing
+              console.log(currentGame, 'currentGame');
               runGame(currentGame);
             })
             .catch((error) => { console.log(error); });

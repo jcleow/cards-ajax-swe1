@@ -84,7 +84,7 @@ const dealCards = function () {
         const displayGameOverMsg = document.querySelector('#game-over');
         displayGameOverMsg.innerText = `Game Over. Winner is P${currentGame.currRoundWinner}`;
       }
-
+      console.log(currentGame, 'currentGame');
       // display it to the user
       runGame(currentGame);
     })
@@ -100,9 +100,9 @@ const dealCards = function () {
 
 // Function that gets the existing state of the game from the table through AJAX
 const refreshGameInfo = function () {
-  axios.get(`/currentGameStatus/${currentGame.id}`)
+  axios.get(`/games/${currentGame.id}`)
     .then((response) => {
-      const { currentGame } = response.data;
+      const currentGame = response.data;
       console.log(currentGame, 'response');
       runGame(currentGame);
     })
@@ -124,6 +124,7 @@ const createDealBtn = () => {
 const createRefreshBtn = () => {
   const refreshBtn = document.createElement('button');
   refreshBtn.innerHTML = 'Refresh';
+  refreshBtn.setAttribute('id', 'refreshBtn');
   refreshBtn.addEventListener('click', refreshGameInfo);
   return refreshBtn;
 };

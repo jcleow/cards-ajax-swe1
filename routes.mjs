@@ -47,8 +47,8 @@ export default function routes(app) {
   app.post('/games', GamesController.create);
   // update a game with new cards
   app.put('/games/:id/deal', GamesController.deal);
-  // refresh page to get current status of game
-  app.get('/currentGameStatus/:id', GamesController.refresh);
+  // // refresh page to get current status of game
+  // app.get('/currentGameStatus/:id', GamesController.show);
 
   const UsersController = users(db);
   app.get('/user', UsersController.show);
